@@ -3,22 +3,27 @@
 import connectToDB from "@/database";
 import User from "@/models";
 
-export async function registerUserAction() {
+import bcryptjs from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { cookies } from "next/headers";
+
+export async function registerUserAction(formData) {
   await connectToDB();
 
   try {
     const { username, email, password } = formData;
 
     const checkUser = await User.findOne({ email });
+    console.log(checkUser);
 
     if (checkUser) {
       return {
         success: false,
-        message: "Uaer already exists with the same email id.",
+        message: "User already exists ! Please try with different email",
       };
     }
 
-    const salt = bcryptjs.genSalt(10);
+    const salt = await bcryptjs.genSalt(10);
     const hashedPassword = await bcryptjs.hash(password, salt);
 
     const newlyCreatedUser = new User({
@@ -37,14 +42,66 @@ export async function registerUserAction() {
     } else {
       return {
         success: false,
-        message: "Something went wrong !!! Please try again.",
+        message: "Something went wrong! Please try again",
       };
     }
   } catch (error) {
     console.log(error);
     return {
       success: false,
-      message: "Something went wrong !!! Please try again.",
+      message: "Something error occured",
+    };
+  }
+}
+
+export async function loginUserAction(formData) {
+  await connectToDB();
+
+  try {
+    const { username, email, password } = formData;
+
+    const checkUser = await User.findOne({ email });
+    console.log(checkUser);
+
+    if (!checkUser) {
+      return {
+        success: false,
+        message: "User does not exist. Please sign up.",
+      };
+    }
+
+    const checkPassword = await bcryptjs.compare(password, checkUser.password);
+
+    if (!checkPassword) {
+      return {
+        success: false,
+        message:
+          "Password is incorrect. Please login with the correct passsword.",
+      };
+    }
+
+    const createdTokenData = {
+      id: checkUser._id,
+      username: checkUser.username,
+      email: checkUser.email,
+    };
+
+    const token = jwt.sign(createdTokenData, "DEFAULT_KEY", {
+      expiresIn: "1d",
+    });
+
+    const getCookies = cookies();
+    getCookies.set("token", token);
+
+    return {
+      success: true,
+      message: "Login successfull.",
+    };
+  } catch (error) {
+    console.log(error);
+    return {
+      success: false,
+      message: "Something error occured",
     };
   }
 }
