@@ -101,7 +101,49 @@ export async function loginUserAction(formData) {
     console.log(error);
     return {
       success: false,
-      message: "Something error occured",
+      message: "Some error occured !!! Please try again.",
     };
   }
+}
+
+export async function fetchAuthUserAction() {
+  await connectToDB();
+
+  try {
+    const getCookies = cookies();
+    const token = getCookies.get("token")?.value || "";
+
+    if (token === "") {
+      return {
+        success: false,
+        message: "Token is invalid",
+      };
+    }
+
+    const decodedToken = jwt.verify(token, "DEFAULT_KEY");
+
+    const getUserInfo = await User.findOne({ _id: decodedToken.id });
+
+    if (getUserInfo) {
+      return {
+        success: true,
+        data: JSON.parse(JSON.stringify(getUserInfo)),
+      };
+    } else {
+      return {
+        success: false,
+        message: "Some error occured !!! Please try again.",
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: "Some error occured !!! Please try again.",
+    };
+  }
+}
+
+export async function logoutAction() {
+  const getCookies = cookies();
+  getCookies.set("token", "");
 }
